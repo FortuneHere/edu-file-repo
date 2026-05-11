@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin uploader</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="container">
+      <header class="header">
+        <h1>Admin PDF Upload</h1>
+        <p class="muted">Клиент для загрузки PDF в backend</p>
+      </header>
+
+      <section class="card">
+        <h2>1) Авторизация</h2>
+        <form id="loginForm">
+          <label class="field">
+            <span>Backend URL</span>
+            <input id="backendUrl" type="url" value="http://127.0.0.1:8000" required />
+          </label>
+
+          <label class="field">
+            <span>Email</span>
+            <input id="email" type="email" placeholder="admin@project.ru" required />
+          </label>
+
+          <label class="field">
+            <span>Password</span>
+            <input id="password" type="password" required />
+          </label>
+
+          <button type="submit" id="loginBtn">Войти и получить токен</button>
+        </form>
+        <p id="authState" class="status muted">Токен еще не получен</p>
+      </section>
+
+      <section class="card">
+        <h2>2) Загрузка PDF</h2>
+        <form id="uploadForm">
+          <label class="field">
+            <span>Папка (folder)</span>
+            <input id="folder" type="text" value="root" required />
+          </label>
+
+          <label class="field">
+            <span>PDF файл</span>
+            <input id="pdfFile" type="file" accept="application/pdf,.pdf" required />
+          </label>
+
+          <button type="submit" id="uploadBtn" disabled>Загрузить PDF</button>
+        </form>
+        <p class="muted">
+          Доступ к endpoint есть только у пользователей с ролью <code>admin</code>.
+        </p>
+      </section>
+
+      <section class="card">
+        <h2>Лог</h2>
+        <pre id="logBox" class="log"></pre>
+      </section>
+    </main>
+
+    <script src="./renderer.js"></script>
+  </body>
+  </html>
