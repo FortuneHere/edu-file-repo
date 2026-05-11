@@ -119,6 +119,7 @@ db.close()
 Запуск из каталога `backend`:
 
 ```bash
+python scripts/verify_env.py
 pytest -q tests/test_backend_e2e_smoke.py
 ```
 
@@ -130,3 +131,28 @@ pytest -q tests/test_backend_e2e_smoke.py
 - upload PDF
 - files list
 - download-link через авторизованный запрос
+
+## 5) Результаты исследования (capture-results)
+
+Дата фиксации: 2026-05-11.
+
+### Успешные шаги
+
+- `py scripts/verify_env.py` завершился успешно.
+- Проверка окружения подтвердила обязательные переменные: `DATABASE_URL` и все `YANDEX_*`.
+- `py -m pytest -q tests/test_backend_e2e_smoke.py` завершился успешно: `1 passed`.
+- Smoke-сценарий подтвердил рабочий поток:
+  - `register -> token`
+  - `403` для `POST /upload` у не-админа
+  - повышение роли до `admin`
+  - upload PDF
+  - files list
+  - `download-link`
+
+### Ошибки и отклонения
+
+- Критических ошибок (`500`, failed tests) в исследуемом сценарии не выявлено.
+- Зафиксированы предупреждения совместимости зависимостей:
+  - SQLAlchemy: `declarative_base()` (`MovedIn20Warning`).
+  - Pydantic: class-based `Config` (`PydanticDeprecatedSince20`) в `schemas.py`.
+  - Python datetime: `datetime.utcnow()` (`DeprecationWarning`) в `auth.py`.
