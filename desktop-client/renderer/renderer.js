@@ -15,6 +15,9 @@ const filesList = document.getElementById("filesList");
 const folderTree = document.getElementById("folderTree");
 const refreshTicketsBtn = document.getElementById("refreshTicketsBtn");
 const ticketsList = document.getElementById("ticketsList");
+const refreshAnalyticsBtn = document.getElementById("refreshAnalyticsBtn");
+const analyticsPeriodSelect = document.getElementById("analyticsPeriod");
+const analyticsBox = document.getElementById("analyticsBox");
 const loginBtn = document.getElementById("loginBtn");
 const exitAppBtn = document.getElementById("exitAppBtn");
 const uploadBtn = document.getElementById("uploadBtn");
@@ -27,6 +30,7 @@ let folderPaths = ["root"];
 const API_BASE_URL = "http://127.0.0.1:8000";
 
 folderSelect.disabled = true;
+analyticsPeriodSelect.disabled = true;
 renderFolderOptions();
 
 function now() {
@@ -124,6 +128,12 @@ function renderFiles(files) {
     topRow.className = "list-row";
     topRow.innerHTML = `<strong>${file.filename}</strong><span>${file.hidden ? "Скрыт" : "Виден"}</span>`;
 
+    const summaryText = document.createElement("p");
+    summaryText.className = "meta";
+    summaryText.textContent = file.summary
+      ? `Кратко: ${file.summary}`
+      : "Краткое описание пока не сгенерировано.";
+
     const renameInput = document.createElement("input");
     renameInput.type = "text";
     renameInput.value = file.filename;
@@ -205,6 +215,7 @@ function renderFiles(files) {
     actions.appendChild(downloadBtn);
     actions.appendChild(deleteBtn);
     item.appendChild(topRow);
+    item.appendChild(summaryText);
     item.appendChild(renameInput);
     item.appendChild(actions);
     filesList.appendChild(item);
@@ -339,6 +350,29 @@ async function refreshTickets() {
   }
 }
 
+async function refreshAnalytics() {
+  try {
+    const period = analyticsPeriodSelect.value || "week";
+    const analytics = await apiFetch(
+      `/stats/materials-growth?period=${encodeURIComponent(period)}`
+    );
+    const growthText =
+      analytics.growth_percent === null ? "Н/Д (нет базы сравнения)" : `${analytics.growth_percent}%`;
+    analyticsBox.textContent = [
+      `Период: ${analytics.period}`,
+      `Формула: ${analytics.formula}`,
+      `Текущий период (N_current): ${analytics.current_count}`,
+      `Предыдущий период (N_previous): ${analytics.previous_count}`,
+      `Темп роста: ${growthText}`,
+      `Тренд: ${analytics.trend}`,
+      `Комментарий: ${analytics.comment}`
+    ].join("\n");
+    analyticsBox.classList.remove("muted");
+  } catch (error) {
+    writeLog(error.message, "error");
+  }
+}
+
 async function readErrorMessage(response) {
   try {
     const body = await response.json();
@@ -390,12 +424,15 @@ loginForm.addEventListener("submit", async (event) => {
     refreshFoldersBtn.disabled = false;
     refreshFilesBtn.disabled = false;
     refreshTicketsBtn.disabled = false;
+    refreshAnalyticsBtn.disabled = false;
+    analyticsPeriodSelect.disabled = false;
     folderSelect.disabled = false;
     deleteFolderBtn.disabled = selectedFolder === "root";
     writeLog("Авторизация успешна, можно загружать PDF.");
     await refreshFolders();
     await refreshFiles();
     await refreshTickets();
+    await refreshAnalytics();
   } catch (error) {
     token = "";
     setAuthenticatedUI(false);
@@ -404,6 +441,8 @@ loginForm.addEventListener("submit", async (event) => {
     refreshFoldersBtn.disabled = true;
     refreshFilesBtn.disabled = true;
     refreshTicketsBtn.disabled = true;
+    refreshAnalyticsBtn.disabled = true;
+    analyticsPeriodSelect.disabled = true;
     folderSelect.disabled = true;
     deleteFolderBtn.disabled = true;
     authState.textContent = "Токен не получен";
@@ -489,6 +528,17 @@ refreshFilesBtn.addEventListener("click", async () => {
 
 refreshTicketsBtn.addEventListener("click", async () => {
   await refreshTickets();
+});
+
+refreshAnalyticsBtn.addEventListener("click", async () => {
+  await refreshAnalytics();
+});
+
+analyticsPeriodSelect.addEventListener("change", async () => {
+  if (!token) {
+    return;
+  }
+  await refreshAnalytics();
 });
 
 folderSelect.addEventListener("change", async () => {

@@ -156,3 +156,48 @@ pytest -q tests/test_backend_e2e_smoke.py
   - SQLAlchemy: `declarative_base()` (`MovedIn20Warning`).
   - Pydantic: class-based `Config` (`PydanticDeprecatedSince20`) в `schemas.py`.
   - Python datetime: `datetime.utcnow()` (`DeprecationWarning`) в `auth.py`.
+
+## 6) Математическая модель: темп роста материалов
+
+В проект добавлен endpoint `GET /stats/materials-growth` для расчета темпа роста методичек.
+
+### Формула
+
+\[
+Growth\% = \frac{N_{current} - N_{previous}}{N_{previous}} \cdot 100
+\]
+
+где:
+- `N_current` — число загруженных методичек за текущий период,
+- `N_previous` — число загруженных методичек за предыдущий такой же период.
+
+Поддерживаемые периоды: `day`, `week`, `month` (по умолчанию `week`).
+
+### Пример расчета
+
+Если за текущую неделю загружено `15` методичек, а за предыдущую `10`, то:
+
+\[
+Growth\% = \frac{15 - 10}{10} \cdot 100 = 50\%
+\]
+
+Интерпретация: темп роста положительный, количество новых материалов увеличилось.
+
+### Проверка в Swagger
+
+1. Авторизоваться через `POST /token` и кнопку `Authorize`.
+2. Выполнить:
+   - `GET /stats/materials-growth?period=day`
+   - `GET /stats/materials-growth?period=week`
+   - `GET /stats/materials-growth?period=month`
+3. Проверить поля ответа:
+   - `current_count`,
+   - `previous_count`,
+   - `growth_percent`,
+   - `trend`,
+   - `comment`.
+
+### Обработка крайних случаев
+
+- Если `N_previous = 0` и `N_current > 0`: возвращается `trend = new_growth`, так как классическая формула деления не применима.
+- Если `N_previous = 0` и `N_current = 0`: возвращается `growth_percent = 0`.

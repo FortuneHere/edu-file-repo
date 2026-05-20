@@ -1,5 +1,5 @@
 # backend/main.py
-from datetime import datetime
+from datetime import datetime, timedelta
 from io import BytesIO
 from typing import List, Optional
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form, Query, Request
@@ -162,6 +162,15 @@ def delete_ticket_attachments(ticket_id: int, db: Session) -> None:
     for attachment in attachments:
         db.delete(attachment)
 
+
+def resolve_period_days(period: str) -> int:
+    period_days = {
+        "day": 1,
+        "week": 7,
+        "month": 30,
+    }
+    return period_days.get(period, 7)
+
 @app.get("/")
 def root():
     return {"message": "Edu File Repository API работает! 🚀"}
@@ -306,6 +315,67 @@ def get_files(
         files_query = files_query.filter(FileModel.hidden.is_(False))
     files = files_query.order_by(FileModel.filename.asc()).all()
     return files
+
+
+@app.get("/stats/materials-growth")
+def get_materials_growth(
+    period: str = Query(default="week", pattern="^(day|week|month)$"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _ = current_user
+    days = resolve_period_days(period)
+    now = datetime.utcnow()
+    start_current = now - timedelta(days=days)
+    start_previous = start_current - timedelta(days=days)
+
+    current_count = (
+        db.query(FileModel)
+        .filter(FileModel.uploaded_at >= start_current, FileModel.uploaded_at < now)
+        .count()
+    )
+    previous_count = (
+        db.query(FileModel)
+        .filter(
+            FileModel.uploaded_at >= start_previous,
+            FileModel.uploaded_at < start_current,
+        )
+        .count()
+    )
+
+    if previous_count == 0 and current_count == 0:
+        growth_percent = 0.0
+        trend = "no_activity"
+        comment = "За оба периода загрузок не было."
+    elif previous_count == 0:
+        growth_percent = None
+        trend = "new_growth"
+        comment = "В прошлом периоде не было загрузок, в текущем появились новые материалы."
+    else:
+        growth_percent = round(
+            ((current_count - previous_count) / previous_count) * 100,
+            2,
+        )
+        if growth_percent > 0:
+            trend = "growth"
+            comment = "Количество новых методичек растет."
+        elif growth_percent < 0:
+            trend = "decline"
+            comment = "Количество новых методичек снизилось."
+        else:
+            trend = "stable"
+            comment = "Темп роста нулевой, объем загрузок не изменился."
+
+    return {
+        "period": period,
+        "current_count": current_count,
+        "previous_count": previous_count,
+        "growth_percent": growth_percent,
+        "formula": "Growth% = ((N_current - N_previous) / N_previous) * 100",
+        "trend": trend,
+        "comment": comment,
+        "window_days": days,
+    }
 
 
 @app.get("/files/download-link", response_model=DownloadLinkResponse)
