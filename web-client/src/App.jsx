@@ -1,15 +1,52 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import "./App.css";
 import {
   createTicket,
+  deleteMyAccount,
+  getFolderTree,
   getDownloadLink,
   getFiles,
   getTickets,
   loginUser,
   registerUser,
+  uploadTicketAttachments,
 } from "./api";
 
 const TOKEN_KEY = "edu_repo_token";
+const MAX_TICKETS_PER_USER = 5;
+const MAX_ATTACHMENTS_PER_TICKET = 10;
+
+function FolderTree({ node, selectedPath, onSelect }) {
+  if (!node) {
+    return null;
+  }
+
+  return (
+    <ul className="tree-list">
+      <li>
+        <button
+          type="button"
+          className={selectedPath === node.path ? "tree-node active" : "tree-node"}
+          onClick={() => onSelect(node.path)}
+        >
+          {node.name}
+        </button>
+        {Array.isArray(node.children) && node.children.length > 0 ? (
+          <div className="tree-children">
+            {node.children.map((child) => (
+              <FolderTree
+                key={child.path}
+                node={child}
+                selectedPath={selectedPath}
+                onSelect={onSelect}
+              />
+            ))}
+          </div>
+        ) : null}
+      </li>
+    </ul>
+  );
+}
 
 function App() {
   const [mode, setMode] = useState("login");
@@ -19,23 +56,57 @@ function App() {
   const [statusMessage, setStatusMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
-  const [folder, setFolder] = useState("root");
+  const [folderTree, setFolderTree] = useState(null);
+  const [selectedFolder, setSelectedFolder] = useState("root");
   const [files, setFiles] = useState([]);
   const [filesLoading, setFilesLoading] = useState(false);
 
   const [tickets, setTickets] = useState([]);
   const [ticketTitle, setTicketTitle] = useState("");
   const [ticketDescription, setTicketDescription] = useState("");
+  const [ticketFiles, setTicketFiles] = useState([]);
   const [ticketsLoading, setTicketsLoading] = useState(false);
 
   const isAuthenticated = Boolean(token);
+  const canCreateTicket = tickets.length < MAX_TICKETS_PER_USER;
+  const ticketFilesLabel = useMemo(
+    () => `${ticketFiles.length}/${MAX_ATTACHMENTS_PER_TICKET} файлов выбрано`,
+    [ticketFiles.length],
+  );
 
-  async function refreshFiles(currentFolder) {
+  async function refreshFolderTree() {
+    try {
+      const tree = await getFolderTree();
+      setFolderTree(tree);
+      setSelectedFolder((previousFolder) => {
+        if (!tree) {
+          return "root";
+        }
+        if (
+          previousFolder === "root" &&
+          tree.path === "root" &&
+          Array.isArray(tree.children) &&
+          tree.children.length > 0
+        ) {
+          return tree.children[0].path;
+        }
+        return previousFolder;
+      });
+    } catch (error) {
+      setErrorMessage(error.message || "Не удалось загрузить дерево папок");
+    }
+  }
+
+  async function refreshFiles(currentFolder, authToken = token) {
+    if (!authToken) {
+      setFiles([]);
+      return;
+    }
     setFilesLoading(true);
     setErrorMessage("");
 
     try {
-      const data = await getFiles(currentFolder);
+      const data = await getFiles(currentFolder, authToken);
       setFiles(Array.isArray(data) ? data : []);
     } catch (error) {
       setErrorMessage(error.message || "Не удалось загрузить список файлов");
@@ -81,7 +152,8 @@ function App() {
       setToken(data.access_token);
       setStatusMessage("Вход выполнен.");
       setPassword("");
-      await refreshFiles(folder);
+      await refreshFolderTree();
+      await refreshFiles(selectedFolder, data.access_token);
       await refreshTickets(data.access_token);
     } catch (error) {
       setErrorMessage(error.message || "Ошибка аутентификации");
@@ -92,8 +164,33 @@ function App() {
     localStorage.removeItem(TOKEN_KEY);
     setToken("");
     setTickets([]);
+    setFiles([]);
+    setTicketFiles([]);
     setStatusMessage("Вы вышли из аккаунта.");
     setErrorMessage("");
+  }
+
+  async function handleDeleteAccount() {
+    if (!token) {
+      return;
+    }
+    const shouldDelete = window.confirm("Удалить ваш аккаунт? Это действие необратимо.");
+    if (!shouldDelete) {
+      return;
+    }
+    setErrorMessage("");
+    setStatusMessage("");
+    try {
+      await deleteMyAccount(token);
+      localStorage.removeItem(TOKEN_KEY);
+      setToken("");
+      setTickets([]);
+      setFiles([]);
+      setTicketFiles([]);
+      setStatusMessage("Аккаунт удален.");
+    } catch (error) {
+      setErrorMessage(error.message || "Не удалось удалить аккаунт");
+    }
   }
 
   async function handleDownload(file) {
@@ -124,22 +221,55 @@ function App() {
     setErrorMessage("");
     setStatusMessage("");
 
+    if (!canCreateTicket) {
+      setErrorMessage(`Достигнут лимит: максимум ${MAX_TICKETS_PER_USER} тикетов.`);
+      return;
+    }
+
+    if (ticketFiles.length > MAX_ATTACHMENTS_PER_TICKET) {
+      setErrorMessage(`Можно прикрепить не более ${MAX_ATTACHMENTS_PER_TICKET} файлов.`);
+      return;
+    }
+
     try {
-      await createTicket(
+      const createdTicket = await createTicket(
         {
           title: ticketTitle,
           description: ticketDescription || null,
         },
         token,
       );
+      if (ticketFiles.length > 0) {
+        await uploadTicketAttachments(createdTicket.id, ticketFiles, token);
+      }
       setStatusMessage("Тикет создан.");
       setTicketTitle("");
       setTicketDescription("");
+      setTicketFiles([]);
       await refreshTickets();
     } catch (error) {
       setErrorMessage(error.message || "Не удалось создать тикет");
     }
   }
+
+  useEffect(() => {
+    void refreshFolderTree();
+  }, []);
+
+  useEffect(() => {
+    if (!token) {
+      return;
+    }
+    void refreshFiles(selectedFolder);
+  }, [selectedFolder, token]);
+
+  useEffect(() => {
+    if (!token) {
+      setTickets([]);
+      return;
+    }
+    void refreshTickets(token);
+  }, [token]);
 
   return (
     <main className="app">
@@ -152,9 +282,14 @@ function App() {
         <div className="row">
           <h2>Аутентификация</h2>
           {isAuthenticated ? (
-            <button type="button" onClick={handleLogout}>
-              Выйти
-            </button>
+            <div className="row">
+              <button type="button" onClick={handleLogout}>
+                Выйти
+              </button>
+              <button type="button" onClick={handleDeleteAccount}>
+                Удалить аккаунт
+              </button>
+            </div>
           ) : null}
         </div>
 
@@ -209,45 +344,67 @@ function App() {
       <section className="card">
         <div className="row">
           <h2>Файлы</h2>
-          <form
-            className="inline-form"
-            onSubmit={(event) => {
-              event.preventDefault();
-              void refreshFiles(folder);
-            }}
-          >
-            <input
-              value={folder}
-              onChange={(event) => setFolder(event.target.value)}
-              placeholder="root"
-            />
-            <button type="submit">Обновить</button>
-          </form>
+          <button type="button" onClick={() => void refreshFolderTree()}>
+            Обновить дерево
+          </button>
         </div>
-
-        {filesLoading ? <p className="muted">Загрузка файлов...</p> : null}
-
-        {!filesLoading && files.length === 0 ? (
-          <p className="muted">В папке нет файлов.</p>
-        ) : null}
-
-        <ul className="list">
-          {files.map((file) => (
-            <li key={file.id} className="list-item">
-              <div>
-                <strong>{file.filename}</strong>
-                <p className="muted">Папка: {file.folder_path}</p>
-              </div>
-              <button type="button" onClick={() => handleDownload(file)}>
-                Скачать
+        <div className="row files-layout">
+          <div className="folder-panel">
+            <p className="muted">Выберите папку</p>
+            {folderTree?.path === "root" ? (
+              folderTree.children?.length ? (
+                folderTree.children.map((child) => (
+                  <FolderTree
+                    key={child.path}
+                    node={child}
+                    selectedPath={selectedFolder}
+                    onSelect={setSelectedFolder}
+                  />
+                ))
+              ) : (
+                <p className="muted">Нет доступных папок.</p>
+              )
+            ) : (
+              <FolderTree node={folderTree} selectedPath={selectedFolder} onSelect={setSelectedFolder} />
+            )}
+          </div>
+          <div className="file-panel">
+            <div className="row">
+              <p className="muted">Текущая папка: {selectedFolder}</p>
+              <button type="button" onClick={() => void refreshFiles(selectedFolder)}>
+                Обновить файлы
               </button>
-            </li>
-          ))}
-        </ul>
+            </div>
+
+            {filesLoading ? <p className="muted">Загрузка файлов...</p> : null}
+
+            {!filesLoading && files.length === 0 ? (
+              <p className="muted">В выбранной папке нет файлов.</p>
+            ) : null}
+
+            <ul className="list">
+              {files.map((file) => (
+                <li key={file.id} className="list-item">
+                  <div>
+                    <strong>{file.filename}</strong>
+                    {file.summary ? <p className="muted">{file.summary}</p> : null}
+                  </div>
+                  <button type="button" onClick={() => handleDownload(file)}>
+                    Скачать
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
       </section>
 
       <section className="card">
         <h2>Тикеты</h2>
+        <p className="muted">
+          Лимит: до {MAX_TICKETS_PER_USER} тикетов на пользователя и до {MAX_ATTACHMENTS_PER_TICKET} файлов
+          на тикет.
+        </p>
 
         <form className="form" onSubmit={handleTicketSubmit}>
           <label>
@@ -257,7 +414,7 @@ function App() {
               onChange={(event) => setTicketTitle(event.target.value)}
               placeholder="Например: Нужна новая методичка"
               required
-              disabled={!isAuthenticated}
+              disabled={!isAuthenticated || !canCreateTicket}
             />
           </label>
 
@@ -268,14 +425,29 @@ function App() {
               onChange={(event) => setTicketDescription(event.target.value)}
               rows={4}
               placeholder="Опишите запрос"
-              disabled={!isAuthenticated}
+              disabled={!isAuthenticated || !canCreateTicket}
             />
           </label>
 
-          <button type="submit" disabled={!isAuthenticated}>
+          <label>
+            Вложения к тикету
+            <input
+              type="file"
+              multiple
+              onChange={(event) => setTicketFiles(Array.from(event.target.files || []))}
+              disabled={!isAuthenticated || !canCreateTicket}
+            />
+            <span className="muted">{ticketFilesLabel}</span>
+          </label>
+
+          <button type="submit" disabled={!isAuthenticated || !canCreateTicket}>
             Создать тикет
           </button>
         </form>
+
+        {!canCreateTicket && isAuthenticated ? (
+          <p className="error">Достигнут лимит: максимум {MAX_TICKETS_PER_USER} тикетов.</p>
+        ) : null}
 
         {ticketsLoading ? <p className="muted">Загрузка тикетов...</p> : null}
 
@@ -289,6 +461,7 @@ function App() {
               <div>
                 <strong>{ticket.title}</strong>
                 <p className="muted">{ticket.description || "Без описания"}</p>
+                <p className="muted">Вложений: {ticket.attachments?.length || 0}</p>
               </div>
               <span className="badge">{ticket.status}</span>
             </li>

@@ -18,11 +18,6 @@
         <h2>1) Авторизация</h2>
         <form id="loginForm">
           <label class="field">
-            <span>Backend URL</span>
-            <input id="backendUrl" type="url" value="http://127.0.0.1:8000" required />
-          </label>
-
-          <label class="field">
             <span>Email</span>
             <input id="email" type="email" placeholder="admin@project.ru" required />
           </label>
@@ -34,6 +29,7 @@
 
           <button type="submit" id="loginBtn">Войти и получить токен</button>
         </form>
+        <button type="button" id="exitAppBtn" class="hidden danger">Выход</button>
         <p id="authState" class="status muted">Токен еще не получен</p>
       </section>
 
@@ -41,20 +37,52 @@
         <h2>2) Загрузка PDF</h2>
         <form id="uploadForm">
           <label class="field">
-            <span>Папка (folder)</span>
-            <input id="folder" type="text" value="root" required />
-          </label>
-
-          <label class="field">
             <span>PDF файл</span>
             <input id="pdfFile" type="file" accept="application/pdf,.pdf" required />
           </label>
 
           <button type="submit" id="uploadBtn" disabled>Загрузить PDF</button>
         </form>
+        <p class="muted">Текущая папка для загрузки: <strong id="currentFolderLabel">root</strong></p>
         <p class="muted">
           Доступ к endpoint есть только у пользователей с ролью <code>admin</code>.
         </p>
+      </section>
+
+      <section class="card">
+        <h2>3) Папки</h2>
+        <form id="createFolderForm">
+          <label class="field">
+            <span>Новая папка (например root/math/lab1)</span>
+            <input id="newFolderPath" type="text" placeholder="root/new-folder" required />
+          </label>
+          <button type="submit" id="createFolderBtn" disabled>Создать папку</button>
+        </form>
+        <div class="row">
+          <button type="button" id="refreshFoldersBtn" disabled>Обновить дерево папок</button>
+          <button type="button" id="deleteFolderBtn" disabled>Удалить выбранную папку</button>
+        </div>
+        <pre id="folderTree" class="tree muted">Дерево папок пока не загружено</pre>
+      </section>
+
+      <section class="card">
+        <h2>4) Файлы в папке</h2>
+        <div class="row">
+          <label class="field grow">
+            <span>Выбор папки</span>
+            <select id="folderSelect"></select>
+          </label>
+          <button type="button" id="refreshFilesBtn" disabled>Обновить файлы</button>
+        </div>
+        <ul id="filesList" class="list"></ul>
+      </section>
+
+      <section class="card">
+        <h2>5) Тикеты пользователей</h2>
+        <div class="row">
+          <button type="button" id="refreshTicketsBtn" disabled>Обновить тикеты</button>
+        </div>
+        <ul id="ticketsList" class="list"></ul>
       </section>
 
       <section class="card">

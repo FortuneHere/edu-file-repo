@@ -3,6 +3,7 @@ import boto3
 from botocore.client import Config
 from botocore.exceptions import BotoCoreError, ClientError
 import os
+from typing import Optional
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -48,29 +49,59 @@ class S3Service:
             region_name="ru-central1",
         )
 
-    def upload_file(self, file_obj, object_name: str):
+    def upload_file(self, file_obj, object_name: str, content_type: Optional[str] = None):
         """Загружает файл в Yandex Object Storage"""
         if not object_name:
             raise ValueError("object_name must not be empty")
 
         try:
-            self.s3_client.upload_fileobj(
-                file_obj,
-                self.bucket_name,
-                object_name,
-                ExtraArgs={"ContentType": "application/pdf"},
-            )
+            if content_type:
+                self.s3_client.upload_fileobj(
+                    file_obj,
+                    self.bucket_name,
+                    object_name,
+                    ExtraArgs={"ContentType": content_type},
+                )
+            else:
+                self.s3_client.upload_fileobj(
+                    file_obj,
+                    self.bucket_name,
+                    object_name,
+                )
             print(f"✅ Файл загружен в Yandex Cloud: {object_name}")
             return True
         except (ClientError, BotoCoreError) as e:
             print(f"❌ Ошибка загрузки в Yandex Cloud: {e}")
             raise S3UploadError("Unable to upload file to Object Storage") from e
 
+    def rename_object(self, old_key: str, new_key: str):
+        if not old_key or not new_key:
+            raise ValueError("old_key and new_key must not be empty")
+        if old_key == new_key:
+            return
+        try:
+            self.s3_client.copy_object(
+                Bucket=self.bucket_name,
+                CopySource={"Bucket": self.bucket_name, "Key": old_key},
+                Key=new_key,
+            )
+            self.s3_client.delete_object(Bucket=self.bucket_name, Key=old_key)
+        except (ClientError, BotoCoreError) as e:
+            raise S3UploadError("Unable to rename object in Object Storage") from e
+
+    def delete_object(self, object_key: str):
+        if not object_key:
+            return
+        try:
+            self.s3_client.delete_object(Bucket=self.bucket_name, Key=object_key)
+        except (ClientError, BotoCoreError) as e:
+            raise S3UploadError("Unable to delete object in Object Storage") from e
+
     def generate_presigned_url(
         self,
         object_name: str,
         expires_in: int = 3600,
-        download_filename: str | None = None,
+        download_filename: Optional[str] = None,
     ):
         """Генерирует временную ссылку для скачивания"""
         if expires_in <= 0:

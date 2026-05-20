@@ -1,6 +1,7 @@
 import os
 import sys
 from pathlib import Path
+from typing import Dict, List, Optional, Tuple
 
 from dotenv import dotenv_values
 
@@ -14,7 +15,9 @@ REQUIRED_ENV_VARS = [
 ]
 
 
-def resolve_env_value(key: str, file_values: dict[str, str | None]) -> tuple[str | None, str | None]:
+def resolve_env_value(
+    key: str, file_values: Dict[str, Optional[str]]
+) -> Tuple[Optional[str], Optional[str]]:
     runtime_value = os.getenv(key)
     if runtime_value and runtime_value.strip():
         return runtime_value.strip(), "process environment"
@@ -29,9 +32,9 @@ def resolve_env_value(key: str, file_values: dict[str, str | None]) -> tuple[str
 def main() -> int:
     backend_dir = Path(__file__).resolve().parent.parent
     env_file = backend_dir / ".env"
-    env_values: dict[str, str | None] = dotenv_values(env_file)
+    env_values: Dict[str, Optional[str]] = dotenv_values(env_file)
 
-    missing: list[str] = []
+    missing: List[str] = []
 
     print("Checking backend environment for E2E smoke prerequisites...")
     print(f"Using .env path: {env_file}")

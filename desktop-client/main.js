@@ -1,5 +1,5 @@
 const path = require("path");
-const { app, BrowserWindow } = require("electron");
+const { app, BrowserWindow, ipcMain } = require("electron");
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
@@ -18,6 +18,10 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  ipcMain.handle("app:quit", () => {
+    app.quit();
+  });
+
   createWindow();
 
   app.on("activate", () => {

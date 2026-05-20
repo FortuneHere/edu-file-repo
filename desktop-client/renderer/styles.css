@@ -39,13 +39,15 @@ body {
 }
 
 input,
-button {
+button,
+select {
   font-size: 14px;
   padding: 10px;
   border-radius: 6px;
 }
 
-input {
+input,
+select {
   border: 1px solid #d1d5db;
 }
 
@@ -56,6 +58,14 @@ button {
   cursor: pointer;
 }
 
+.danger {
+  background: #b91c1c;
+}
+
+.hidden {
+  display: none;
+}
+
 button:disabled {
   cursor: not-allowed;
   opacity: 0.6;
@@ -63,6 +73,70 @@ button:disabled {
 
 .status {
   margin: 8px 0 0;
+}
+
+.row {
+  display: flex;
+  gap: 10px;
+  align-items: end;
+}
+
+.grow {
+  flex: 1;
+}
+
+.list {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+  display: grid;
+  gap: 8px;
+}
+
+.list-item {
+  display: grid;
+  gap: 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.list-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tree {
+  margin: 12px 0 0;
+  min-height: 120px;
+  max-height: 260px;
+  overflow: auto;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 10px;
+}
+
+.meta {
+  color: #6b7280;
+  margin: 0;
+  font-size: 13px;
+}
+
+.attachments-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
 }
 
 .log {

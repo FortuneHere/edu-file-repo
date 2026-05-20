@@ -1,5 +1,5 @@
 # backend/schemas.py
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, List
 from datetime import datetime
 
@@ -34,6 +34,7 @@ class FileResponse(FileBase):
     s3_key: str
     uploaded_by: str
     uploaded_at: datetime
+    hidden: bool
 
     class Config:
         from_attributes = True
@@ -44,10 +45,36 @@ class DownloadLinkResponse(BaseModel):
     filename: str
     expires_in: int
 
+
+class FolderCreate(BaseModel):
+    path: str
+
+
+class FolderTreeNode(BaseModel):
+    name: str
+    path: str
+    children: List["FolderTreeNode"] = Field(default_factory=list)
+
+
+class FileUpdate(BaseModel):
+    filename: Optional[str] = None
+    hidden: Optional[bool] = None
+    folder_path: Optional[str] = None
+
 # ====================== Тикеты ======================
 class TicketCreate(BaseModel):
     title: str
     description: Optional[str] = None
+
+
+class TicketAttachmentResponse(BaseModel):
+    id: int
+    filename: str
+    s3_key: str
+    uploaded_at: datetime
+
+    class Config:
+        from_attributes = True
 
 class TicketResponse(BaseModel):
     id: int
@@ -57,6 +84,7 @@ class TicketResponse(BaseModel):
     attachment_s3_key: Optional[str]
     created_at: datetime
     user_email: Optional[str]
+    attachments: List[TicketAttachmentResponse] = Field(default_factory=list)
 
     class Config:
         from_attributes = True
@@ -68,3 +96,9 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     email: Optional[str] = None
+
+
+if hasattr(FolderTreeNode, "model_rebuild"):
+    FolderTreeNode.model_rebuild()
+else:
+    FolderTreeNode.update_forward_refs()

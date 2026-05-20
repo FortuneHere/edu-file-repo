@@ -31,6 +31,44 @@
   gap: 8px;
 }
 
+.files-layout {
+  align-items: flex-start;
+  margin-top: 12px;
+}
+
+.folder-panel {
+  width: 280px;
+  min-width: 220px;
+}
+
+.file-panel {
+  flex: 1;
+}
+
+.tree-list {
+  list-style: none;
+  margin: 6px 0;
+  padding-left: 10px;
+}
+
+.tree-node {
+  width: 100%;
+  text-align: left;
+  border: 1px solid #d5dbe7;
+  background: #ffffff;
+  margin-bottom: 6px;
+}
+
+.tree-node.active {
+  background: #1f6feb;
+  color: #ffffff;
+  border-color: #1f6feb;
+}
+
+.tree-children {
+  padding-left: 14px;
+}
+
 .tabs {
   display: flex;
   gap: 8px;
@@ -93,6 +131,15 @@ button:disabled {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
+}
+
+@media (max-width: 900px) {
+  .files-layout {
+    flex-direction: column;
+  }
+  .folder-panel {
+    width: 100%;
+  }
 }
 
 .badge {

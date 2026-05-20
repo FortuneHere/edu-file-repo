@@ -3,7 +3,9 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000
 async function apiRequest(path, { method = "GET", token, body } = {}) {
   const headers = {};
 
-  if (body !== undefined) {
+  const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
+
+  if (body !== undefined && !isFormData) {
     headers["Content-Type"] = "application/json";
   }
 
@@ -14,7 +16,12 @@ async function apiRequest(path, { method = "GET", token, body } = {}) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method,
     headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    body:
+      body === undefined
+        ? undefined
+        : isFormData
+          ? body
+          : JSON.stringify(body),
   });
 
   const contentType = response.headers.get("content-type") || "";
@@ -37,9 +44,13 @@ export function loginUser(payload) {
   return apiRequest("/token", { method: "POST", body: payload });
 }
 
-export function getFiles(folder) {
+export function getFiles(folder, token, includeHidden = false) {
   const query = encodeURIComponent(folder || "root");
-  return apiRequest(`/files?folder=${query}`);
+  return apiRequest(`/files?folder=${query}&include_hidden=${includeHidden}`, { token });
+}
+
+export function getFolderTree() {
+  return apiRequest("/folders/tree");
 }
 
 export function getDownloadLink(s3Key, token) {
@@ -53,4 +64,18 @@ export function getTickets(token) {
 
 export function createTicket(payload, token) {
   return apiRequest("/tickets", { method: "POST", token, body: payload });
+}
+
+export function uploadTicketAttachments(ticketId, files, token) {
+  const formData = new FormData();
+  files.forEach((file) => formData.append("files", file));
+  return apiRequest(`/tickets/${ticketId}/attachments`, {
+    method: "POST",
+    token,
+    body: formData,
+  });
+}
+
+export function deleteMyAccount(token) {
+  return apiRequest("/users/me", { method: "DELETE", token });
 }

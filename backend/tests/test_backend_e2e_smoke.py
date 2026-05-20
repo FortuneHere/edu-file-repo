@@ -111,7 +111,11 @@ def test_backend_full_smoke_scenario(monkeypatch):
         assert fake_s3.uploaded_keys == ["root/smoke.pdf"]
 
         # 5) List files.
-        files_response = client.get("/files", params={"folder": "root"})
+        files_response = client.get(
+            "/files",
+            params={"folder": "root"},
+            headers=_make_auth_header(admin_token),
+        )
         assert files_response.status_code == 200
         files_payload = files_response.json()
         assert len(files_payload) == 1
