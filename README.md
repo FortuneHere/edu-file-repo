@@ -1,8 +1,8 @@
 ﻿# edu-file-repo
 ## Скриншоты
 
-### Веб-клиент (главная панель)
+### Веб-клиент
 ![Веб-клиент](./docs/images/Screenshot-web-client.png)
 
-### Десктоп-клиент: AI-суммаризация
+### Десктоп-клиент
 ![Десктопное приложение](./docs/images/Screenshot-desktop.png)
